@@ -21,14 +21,6 @@ Current freeze version: `0.1.1`
   - Boss frames.
   - Blizzard cast bars.
 
-## Texture Setup
-
-The addon uses a local texture path:
-
-`Interface\AddOns\muteCat UF\Media\Textures\DF_Soft.tga`
-
-No dependency on external addons is required for this texture.
-
 ## Install
 
 Place the folder in:
