@@ -2,6 +2,7 @@ local _, ns = ...
 local cfg = ns.config
 local classColors = cfg.classColors
 local vehiclePowerColor = cfg.vehiclePowerColor
+local NEUTRAL_REACTION_R, NEUTRAL_REACTION_G, NEUTRAL_REACTION_B = 254 / 255, 227 / 255, 66 / 255
 
 local isSecretValue = issecretvalue or function()
     return false
@@ -59,6 +60,9 @@ function ns.GetNameColor(unit)
     end
 
     local reaction = UnitReaction(unit, "player")
+    if reaction == 4 then
+        return NEUTRAL_REACTION_R, NEUTRAL_REACTION_G, NEUTRAL_REACTION_B
+    end
     local reactionColor = reaction and FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
     if reactionColor then
         return reactionColor.r, reactionColor.g, reactionColor.b

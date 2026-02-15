@@ -13,28 +13,7 @@ local IMMEDIATE_INTERPOLATION = (Enum and Enum.StatusBarInterpolation and Enum.S
 if oUF and oUF.Tags and oUF.Tags.Methods and not oUF.Tags.Methods["mutecat:curhpabbr"] then
     oUF.Tags.Methods["mutecat:curhpabbr"] = function(unit)
         local value = UnitHealth and UnitHealth(unit)
-        if value == nil then
-            return "0"
-        end
-
-        if AbbreviateNumbers then
-            local okAbbr, abbr = pcall(AbbreviateNumbers, value)
-            if okAbbr and abbr then
-                return abbr
-            end
-        end
-
-        local okBreak, broken = pcall(BreakUpLargeNumbers, value)
-        if okBreak and broken then
-            return broken
-        end
-
-        local okText, text = pcall(tostring, value)
-        if okText and text then
-            return text
-        end
-
-        return "0"
+        return ns.ShortValue(value)
     end
     oUF.Tags.Events["mutecat:curhpabbr"] = "UNIT_HEALTH UNIT_MAXHEALTH UNIT_CONNECTION"
 end
@@ -627,12 +606,8 @@ local function HealthPostUpdate(health, unit, cur)
     if self and self.HealthValue then
         UpdateNameDisplay(self, unit)
 
-        local r, g, b
-        if unit == "target" or unit == "focus" then
-            r, g, b = 1, 1, 1
-        else
-            r, g, b = ns.GetClassColor(unit)
-        end
+        local colorFunc = (unit == "target" or unit == "focus") and ns.GetNameColor or ns.GetClassColor
+        local r, g, b = colorFunc(unit)
         if self.__mcHealthR ~= r or self.__mcHealthG ~= g or self.__mcHealthB ~= b then
             self.__mcHealthR, self.__mcHealthG, self.__mcHealthB = r, g, b
             self.HealthValue:SetTextColor(r, g, b, 1)
