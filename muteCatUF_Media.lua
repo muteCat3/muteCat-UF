@@ -38,6 +38,7 @@ if not RegisterMedia() then
 
         if RegisterMedia() then
             waiter:UnregisterAllEvents()
+            waiter:SetScript("OnEvent", nil)
         end
     end)
 else
@@ -45,5 +46,7 @@ else
     refresher:RegisterEvent("PLAYER_LOGIN")
     refresher:SetScript("OnEvent", function()
         RegisterMedia()
+        refresher:UnregisterAllEvents()
+        refresher:SetScript("OnEvent", nil)
     end)
 end

@@ -18,7 +18,7 @@ oUF:Factory(function(factory)
     focus:SetPoint("CENTER", UIParent, "CENTER", 420, -226)
 
     if ns.SetupEditMode and player and target and player.Castbar then
-        ns.SetupEditMode(player, target, focus, player.Castbar)
+        ns.SetupEditMode(player, target, focus, player.Castbar, player.SecondaryResourceBar)
     end
 
     ns.HideBlizzardUnitFrames()

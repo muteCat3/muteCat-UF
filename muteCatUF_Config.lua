@@ -11,6 +11,12 @@ ns.config = {
     castbarWidth = 200,
     castbarCenterX = 0,
     castbarCenterY = 0,
+    secondaryBarWidth = 200,
+    secondaryBarHeight = 15,
+    secondaryTickThickness = 2,
+    secondaryBorderThickness = 1,
+    secondaryHideInVehicle = true,
+    secondaryHideMountedOutsideInstance = true,
     innerPadding = 1,
 
     barTexture = "Interface\\AddOns\\" .. addonName .. "\\Media\\Textures\\DF_Soft.tga",

@@ -1,5 +1,7 @@
 local _, ns = ...
 local cfg = ns.config
+local classColors = cfg.classColors
+local vehiclePowerColor = cfg.vehiclePowerColor
 
 local isSecretValue = issecretvalue or function()
     return false
@@ -39,7 +41,7 @@ end
 
 function ns.GetClassColor(unit)
     local _, class = UnitClass(unit)
-    local color = class and cfg.classColors and cfg.classColors[class]
+    local color = class and classColors and classColors[class]
     if color then
         return color.r, color.g, color.b
     end
@@ -50,7 +52,7 @@ end
 function ns.GetNameColor(unit)
     if UnitIsPlayer(unit) then
         local _, class = UnitClass(unit)
-        local classColor = class and cfg.classColors and cfg.classColors[class]
+        local classColor = class and classColors and classColors[class]
         if classColor then
             return classColor.r, classColor.g, classColor.b
         end
@@ -71,7 +73,7 @@ function ns.SetPowerColor(power, unit)
     end
 
     if unit == "player" and ns.IsPlayerInVehicle() then
-        local color = cfg.vehiclePowerColor
+        local color = vehiclePowerColor
         if power.__mcPowerColorKey == "vehicle" then
             return
         end
@@ -81,9 +83,9 @@ function ns.SetPowerColor(power, unit)
     end
 
     local _, class = UnitClass(unit)
-    local color = class and cfg.classColors and cfg.classColors[class]
+    local color = class and classColors and classColors[class]
     if color then
-        local key = "class:" .. class
+        local key = class
         if power.__mcPowerColorKey == key then
             return
         end
