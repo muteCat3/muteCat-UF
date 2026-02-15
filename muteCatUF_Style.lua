@@ -7,7 +7,7 @@ local holyPowerColor = (PowerBarColor and (PowerBarColor.HOLY_POWER or (Enum and
 local secondaryLineColor = 0.12156863
 local PLAYER_CLASS = select(2, UnitClass("player"))
 local PLAYER_CLASS_COLOR = PLAYER_CLASS and cfg.classColors and cfg.classColors[PLAYER_CLASS]
-local SMOOTH_INTERPOLATION = (Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Smooth) or 1
+local SMOOTH_INTERPOLATION = (Enum and Enum.StatusBarInterpolation and (Enum.StatusBarInterpolation.ExponentialEaseOut or Enum.StatusBarInterpolation.Smooth)) or 1
 local IMMEDIATE_INTERPOLATION = (Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Immediate) or 0
 
 if oUF and oUF.Tags and oUF.Tags.Methods and not oUF.Tags.Methods["mutecat:curhpabbr"] then
@@ -613,10 +613,7 @@ local function UpdateNameDisplay(self, unit)
     end
 
     local name = UnitName(unit) or ""
-    if self.__mcNameText ~= name then
-        self.__mcNameText = name
-        self.Name:SetText(name)
-    end
+    self.Name:SetText(name)
 
     local r, g, b = ns.GetNameColor(unit)
     if self.__mcNameR ~= r or self.__mcNameG ~= g or self.__mcNameB ~= b then
