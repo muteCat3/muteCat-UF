@@ -13,7 +13,7 @@ ns.config = {
     castbarCenterY = 0,
     innerPadding = 1,
 
-    barTexture = "Interface\\AddOns\\" .. addonName .. "\\Media\\Textures\\DF_Matte.tga",
+    barTexture = "Interface\\AddOns\\" .. addonName .. "\\Media\\Textures\\DF_Soft.tga",
     combatIcon = "Interface\\AddOns\\" .. addonName .. "\\Media\\Textures\\Status\\Combat\\Combat0.tga",
     restingIcon = "Interface\\AddOns\\" .. addonName .. "\\Media\\Textures\\Status\\Resting\\Resting0.tga",
 

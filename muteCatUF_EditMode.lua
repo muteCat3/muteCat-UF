@@ -317,9 +317,9 @@ local function addCastbarSettings(castbarFrame)
             end,
             minValue = -1200,
             maxValue = 1200,
-            valueStep = 1,
+            valueStep = 0.5,
             formatter = function(value)
-                return tostring(math.floor(value + 0.5))
+                return string.format("%.1f", value)
             end,
         },
         {
@@ -339,9 +339,9 @@ local function addCastbarSettings(castbarFrame)
             end,
             minValue = -800,
             maxValue = 800,
-            valueStep = 1,
+            valueStep = 0.5,
             formatter = function(value)
-                return tostring(math.floor(value + 0.5))
+                return string.format("%.1f", value)
             end,
         },
         {
@@ -359,9 +359,9 @@ local function addCastbarSettings(castbarFrame)
             end,
             minValue = 120,
             maxValue = 400,
-            valueStep = 1,
+            valueStep = 0.5,
             formatter = function(value)
-                return tostring(math.floor(value + 0.5))
+                return string.format("%.1f", value)
             end,
         },
         {
@@ -379,9 +379,9 @@ local function addCastbarSettings(castbarFrame)
             end,
             minValue = 10,
             maxValue = 40,
-            valueStep = 1,
+            valueStep = 0.5,
             formatter = function(value)
-                return tostring(math.floor(value + 0.5))
+                return string.format("%.1f", value)
             end,
         },
     })
