@@ -2,7 +2,8 @@
 ## Title: muteCat UF
 ## Notes: Always-on unit frames for player and target.
 ## Author: muteCat
-## Version: 0.1.0
+## Version: 0.1.1
+## IconTexture: Interface\AddOns\muteCat UF\Media\Textures\muteCatUF_Icon
 ## SavedVariables: muteCatUFDB
 
 Libraries/LibStub/LibStub.lua

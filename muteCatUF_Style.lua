@@ -305,6 +305,7 @@ function ns.Style(self, unit)
         castbar:SetFrameLevel((castbarAnchor:GetFrameLevel() or 1) + 5)
         castbar:SetIgnoreParentAlpha(true)
         castbar.timeToHold = 0.15
+        castbar.smoothing = (Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Immediate) or 0
 
         castbar.bg = castbar:CreateTexture(nil, "BACKGROUND")
         castbar.bg:SetAllPoints(castbar)
