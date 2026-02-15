@@ -247,6 +247,7 @@ function ns.Style(self, unit)
     health:SetStatusBarTexture(cfg.barTexture)
     health:SetStatusBarColor(cfg.healthForeground[1], cfg.healthForeground[2], cfg.healthForeground[3], cfg.healthForeground[4])
     health.frequentUpdates = true
+    health.smoothing = (Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Smooth) or 1
     health.PostUpdate = HealthPostUpdate
 
     health.bg = health:CreateTexture(nil, "BACKGROUND")
@@ -262,6 +263,7 @@ function ns.Style(self, unit)
     power:SetHeight(cfg.powerHeight)
     power:SetStatusBarTexture(cfg.barTexture)
     power.frequentUpdates = true
+    power.smoothing = (Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Smooth) or 1
     power.colorPower = false
     power.colorClass = false
     power.colorReaction = false
