@@ -327,15 +327,21 @@ local function LayoutSecondaryResourceBars(container, classPower, maxPower)
 end
 
 local function IsSecondaryResourceSuppressed()
-    if cfg.secondaryHideInVehicle and ns.IsPlayerInVehicle and ns.IsPlayerInVehicle() then
+    local hideForVehicleStates = cfg.secondaryHideInVehicle
+        and ns.IsSpecialActionBarStateActive
+        and ns.IsSpecialActionBarStateActive()
+
+    if hideForVehicleStates then
         return true
     end
 
-    if cfg.secondaryHideMountedOutsideInstance and IsMounted and IsMounted() then
+    local hideForMountedOutsideInstance = cfg.secondaryHideMountedOutsideInstance
+        and IsMounted
+        and IsMounted()
+
+    if hideForMountedOutsideInstance then
         local _, instanceType = IsInInstance()
-        if instanceType ~= "party" and instanceType ~= "raid" then
-            return true
-        end
+        return instanceType ~= "party" and instanceType ~= "raid"
     end
 
     return false
@@ -508,6 +514,10 @@ function ns.InitializeSecondaryResourceBar(owner)
         watcher:RegisterEvent("UNIT_EXITED_VEHICLE")
         watcher:RegisterEvent("VEHICLE_UPDATE")
         watcher:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
+        watcher:RegisterEvent("UPDATE_OVERRIDE_ACTIONBAR")
+        watcher:RegisterEvent("UPDATE_POSSESS_BAR")
+        watcher:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
+        watcher:RegisterEvent("UPDATE_SHAPESHIFT_FORMS")
         watcher:SetScript("OnEvent", function(_, _, unit)
             if unit and unit ~= "player" then
                 return
@@ -799,3 +809,8 @@ function ns.Style(self, unit)
         self.RestingIndicator:SetDrawLayer("OVERLAY", 7)
     end
 end
+
+
+
+
+

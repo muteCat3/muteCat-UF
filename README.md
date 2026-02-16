@@ -1,71 +1,42 @@
 # muteCat UF
 
-`muteCat UF` is a lightweight oUF-based unit frame addon for WoW Retail.
-It provides custom `player`, `target`, and `focus` frames, a custom player castbar, and a class-resource bar with Edit Mode support.
+Always-on oUF unitframes for `player`, `target`, and `focus`, plus a custom player castbar.
 
-Version: `0.1.1`
-Interface: `120001`
+Current freeze version: `0.1.1`
 
 ## Features
 
-- Custom unit frames for:
-  - `player`
-  - `target`
-  - `focus` (half-width layout)
-- Custom player castbar:
-  - integrated cast icon
-  - class-colored castbar
-  - movable/resizable via Edit Mode
-- Secondary class resource bar (oUF `ClassPower`):
-  - only enabled for classes that use class resources
-  - class/spec-specific position and size storage
-  - optional suppression in vehicle
-  - optional suppression while mounted outside dungeon/raid
-  - configurable tick and border styling
-- Unit text and colors:
-  - abbreviated health values
-  - class/reaction-based name colors
-  - custom neutral and hostile NPC reaction colors
-- Player status indicators:
-  - combat icon
-  - resting icon
-- Blizzard frame suppression for overlapping default UI elements:
-  - player/target/focus unit frames
-  - target-of-target and focus-target
-  - Blizzard cast bars
-  - boss frames
+- Custom `player`, `target`, `focus` frames (focus uses half width).
+- Custom player castbar with icon, time text, and Edit Mode controls.
+- Edit Mode integration via `LibEditMode`:
+  - Move `player`, `target`, `focus`, `castbar`.
+  - Adjust castbar `X`, `Y`, `Width`, `Height` (0.5 steps).
+- Vehicle-aware player power color.
+- Health value abbreviation.
+- Class/reaction-based name colors.
+- Combat/resting status icons on player.
+- Blizzard frame suppression:
+  - Player/Target/Focus Blizzard frames.
+  - Target-of-target / Focus target.
+  - Boss frames.
+  - Blizzard cast bars.
 
-## Edit Mode Integration
+## Install
 
-The addon uses `LibEditMode` and exposes movable/resizable anchors for:
-
-- player frame
-- target frame
-- focus frame
-- castbar (position + width/height)
-- secondary resource bar (position + width/height)
-
-Settings are stored in `muteCatUFDB`.
-
-## Installation
-
-Copy the addon folder to:
+Place the folder in:
 
 `World of Warcraft\_retail_\Interface\AddOns\muteCat UF`
 
-Make sure the folder name matches the TOC (`muteCat UF.toc`).
+Required TOC:
 
-## Dependencies
+- `muteCat UF.toc` (folder-name matching)
 
-Bundled in `Libraries/`:
+## Saved Variables
 
-- `oUF`
-- `LibEditMode`
-- `LibSharedMedia-3.0`
-- `LibStub`
-- `CallbackHandler-1.0`
+- `muteCatUFDB`
+  - Stores Edit Mode layout data (positions/sizes).
 
 ## Notes
 
-- Run `/reload` after updates.
-- This addon targets WoW Retail.
+- If frames look outdated after updates, run `/reload`.
+- Castbar position/size is layout-aware and can be changed in Edit Mode.
