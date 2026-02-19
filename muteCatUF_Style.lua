@@ -1,36 +1,60 @@
-local _, ns = ...
+
+--- @class muteCatUF: Namespace
+local addonName, ns = ...
 local cfg = ns.config
 local oUF = ns.oUF
+if not oUF then return end
 
-local WHITE_TEXTURE = "Interface\\Buttons\\WHITE8x8"
-local holyPowerColor = (PowerBarColor and (PowerBarColor.HOLY_POWER or (Enum and Enum.PowerType and PowerBarColor[Enum.PowerType.HolyPower]))) or { r = 0.95, g = 0.9, b = 0.6 }
-local secondaryLineColor = 0.12156863
-local PLAYER_CLASS = select(2, UnitClass("player"))
-local PLAYER_CLASS_COLOR = PLAYER_CLASS and cfg.classColors and cfg.classColors[PLAYER_CLASS]
-local SMOOTH_INTERPOLATION = (Enum and Enum.StatusBarInterpolation and (Enum.StatusBarInterpolation.ExponentialEaseOut or Enum.StatusBarInterpolation.Smooth)) or 1
-local IMMEDIATE_INTERPOLATION = (Enum and Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Immediate) or 0
+-- =============================================================================
+-- CONSTANTS & THEME
+-- =============================================================================
+local DEFAULT_FONT          = [[Fonts\FRIZQT__.TTF]]
+local WHITE_TEXTURE         = [[Interface\Buttons\WHITE8x8]]
+local BORDER_COLOR_VALUE    = 0.12156863
+local BORDER_THICKNESS      = 1
 
-if oUF and oUF.Tags and oUF.Tags.Methods and not oUF.Tags.Methods["mutecat:curhpabbr"] then
+local PLAYER_CLASS          = select(2, UnitClass("player"))
+local PLAYER_CLASS_COLOR    = PLAYER_CLASS and cfg.classColors and cfg.classColors[PLAYER_CLASS]
+
+-- Multi-expansion interpolation handling (Midnight 12.0.1+)
+local SMOOTH_INTERPOLATION     = (Enum.StatusBarInterpolation and (Enum.StatusBarInterpolation.ExponentialEaseOut or Enum.StatusBarInterpolation.Smooth)) or 1
+local IMMEDIATE_INTERPOLATION  = (Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Immediate) or 0
+
+-- Paladin Holy Power fallback or native Blizzard color
+local HOLY_POWER_COLOR = (PowerBarColor and (PowerBarColor.HOLY_POWER or (Enum.PowerType and PowerBarColor[Enum.PowerType.HolyPower]))) or { r = 0.95, g = 0.9, b = 0.6 }
+
+-- =============================================================================
+-- OUF TAGS
+-- =============================================================================
+
+--- Abbreviated health tag for native muteCat look.
+if not oUF.Tags.Methods["mutecat:curhpabbr"] then
     oUF.Tags.Methods["mutecat:curhpabbr"] = function(unit)
-        local value = UnitHealth and UnitHealth(unit)
+        local value = UnitHealth(unit)
         return ns.ShortValue(value)
     end
     oUF.Tags.Events["mutecat:curhpabbr"] = "UNIT_HEALTH UNIT_MAXHEALTH UNIT_CONNECTION"
 end
 
+-- =============================================================================
+-- UTILITY FUNCTIONS
+-- =============================================================================
+
+--- Applies class coloring to castbars.
+--- @param castbar StatusBar
 local function ApplyCastbarClassColor(castbar)
     if PLAYER_CLASS_COLOR then
         castbar:SetStatusBarColor(PLAYER_CLASS_COLOR.r, PLAYER_CLASS_COLOR.g, PLAYER_CLASS_COLOR.b, 1)
     else
-        castbar:SetStatusBarColor(holyPowerColor.r, holyPowerColor.g, holyPowerColor.b, 1)
+        castbar:SetStatusBarColor(HOLY_POWER_COLOR.r, HOLY_POWER_COLOR.g, HOLY_POWER_COLOR.b, 1)
     end
 end
 
+--- Aggressively hides a Blizzard frame by unregistering events and hooking Show.
+--- @param frame Frame
+--- @param flagName string? Unique internal identifier
 local function HideFrameForever(frame, flagName)
-    if not frame then
-        return
-    end
-
+    if not frame then return end
     local hiddenFlag = flagName or "__mcHiddenSetup"
     if not frame[hiddenFlag] then
         if frame.UnregisterAllEvents then
@@ -39,63 +63,86 @@ local function HideFrameForever(frame, flagName)
         hooksecurefunc(frame, "Show", frame.Hide)
         frame[hiddenFlag] = true
     end
-
     frame:SetParent(ns.hiddenParent)
     frame:Hide()
 end
 
+--- Disables Blizzard Boss Frames via native Edit Mode settings (Midnight API).
 local function DisableBossFramesViaEditMode()
-    if ns.__mcBossSettingApplied then
-        return
-    end
-
-    if C_EditMode and C_EditMode.SetAccountSetting and Enum and Enum.EditModeAccountSetting and Enum.EditModeAccountSetting.ShowBossFrames then
-        pcall(C_EditMode.SetAccountSetting, Enum.EditModeAccountSetting.ShowBossFrames, 0)
+    if ns.__mcBossSettingApplied then return end
+    if C_EditMode and Enum.EditModeAccountSetting and Enum.EditModeAccountSetting.ShowBossFrames then
+        C_EditMode.SetAccountSetting(Enum.EditModeAccountSetting.ShowBossFrames, 0)
         ns.__mcBossSettingApplied = true
     end
 end
 
+--- Standardized border creation for unit frames and resources.
+--- @param owner table The object to receive the border textures
+--- @param parent Frame The parent frame for the textures
+--- @param r number? Red
+--- @param g number? Green
+--- @param b number? Blue
+local function CreateFrameBorder(owner, parent, r, g, b)
+    local red, green, blue = r or 0, g or 0, b or 0
+    local alpha = 0.7
+    
+    owner.borderTop = parent:CreateTexture(nil, "OVERLAY")
+    owner.borderTop:SetTexture(WHITE_TEXTURE)
+    owner.borderTop:SetPoint("TOPLEFT", owner, "TOPLEFT", 0, 0)
+    owner.borderTop:SetPoint("TOPRIGHT", owner, "TOPRIGHT", 0, 0)
+    owner.borderTop:SetHeight(BORDER_THICKNESS)
+    owner.borderTop:SetVertexColor(red, green, blue, alpha)
+
+    owner.borderBottom = parent:CreateTexture(nil, "OVERLAY")
+    owner.borderBottom:SetTexture(WHITE_TEXTURE)
+    owner.borderBottom:SetPoint("BOTTOMLEFT", owner, "BOTTOMLEFT", 0, 0)
+    owner.borderBottom:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", 0, 0)
+    owner.borderBottom:SetHeight(BORDER_THICKNESS)
+    owner.borderBottom:SetVertexColor(red, green, blue, alpha)
+
+    owner.borderLeft = parent:CreateTexture(nil, "OVERLAY")
+    owner.borderLeft:SetTexture(WHITE_TEXTURE)
+    owner.borderLeft:SetPoint("TOPLEFT", owner, "TOPLEFT", 0, 0)
+    owner.borderLeft:SetPoint("BOTTOMLEFT", owner, "BOTTOMLEFT", 0, 0)
+    owner.borderLeft:SetWidth(BORDER_THICKNESS)
+    owner.borderLeft:SetVertexColor(red, green, blue, alpha)
+
+    owner.borderRight = parent:CreateTexture(nil, "OVERLAY")
+    owner.borderRight:SetTexture(WHITE_TEXTURE)
+    owner.borderRight:SetPoint("TOPRIGHT", owner, "TOPRIGHT", 0, 0)
+    owner.borderRight:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", 0, 0)
+    owner.borderRight:SetWidth(BORDER_THICKNESS)
+    owner.borderRight:SetVertexColor(red, green, blue, alpha)
+end
+
+-- =============================================================================
+-- CASTBAR SYSTEM
+-- =============================================================================
+
 local function CastbarPostStart(castbar)
-    if ns.RefreshCastbarFromEditMode then
-        ns.RefreshCastbarFromEditMode(castbar)
-    end
-
+    if ns.RefreshCastbarFromEditMode then ns.RefreshCastbarFromEditMode(castbar) end
     ApplyCastbarClassColor(castbar)
-
     castbar:SetAlpha(1)
     castbar:Show()
 end
 
 local function EnsureCastbarAnchor()
-    if ns.CastbarAnchor then
-        return ns.CastbarAnchor
-    end
-
+    if ns.CastbarAnchor then return ns.CastbarAnchor end
     local anchor = CreateFrame("Frame", "muteCatUF_CastbarAnchor", UIParent)
     anchor:SetPoint("CENTER", UIParent, "CENTER", cfg.castbarCenterX, cfg.castbarCenterY)
     anchor:SetSize(cfg.castbarWidth + cfg.castbarHeight, cfg.castbarHeight)
     anchor:SetFrameStrata("MEDIUM")
     anchor:EnableMouse(false)
-
-    anchor.preview = anchor:CreateTexture(nil, "BACKGROUND")
-    anchor.preview:SetAllPoints(anchor)
-    anchor.preview:SetTexture(WHITE_TEXTURE)
-    anchor.preview:SetVertexColor(1, 1, 1, 0)
-    anchor:Show()
-
     ns.CastbarAnchor = anchor
     return anchor
 end
 
 function ns.ApplyCastbarSize(castbar, width, height)
-    if not castbar then
-        return
-    end
-
+    if not castbar then return end
     local w = math.max(80, tonumber(width) or cfg.castbarWidth)
     local h = math.max(10, tonumber(height) or cfg.castbarHeight)
-
     castbar:SetSize(w, h)
+    
     if castbar.__mcAnchor then
         castbar:ClearAllPoints()
         castbar:SetPoint("LEFT", castbar.__mcAnchor, "LEFT", h, 0)
@@ -103,222 +150,124 @@ function ns.ApplyCastbarSize(castbar, width, height)
     elseif ns.CastbarAnchor then
         ns.CastbarAnchor:SetSize(w + h, h)
     end
-    if castbar.IconFrame then
-        castbar.IconFrame:SetSize(h, h)
-    elseif castbar.Icon then
-        castbar.Icon:SetSize(h, h)
-    end
+    
+    local icon = castbar.IconFrame or castbar.Icon
+    if icon then icon:SetSize(h, h) end
 end
 
-local function EnsureSecondaryResourceAnchor()
-    if ns.SecondaryResourceAnchor then
-        return ns.SecondaryResourceAnchor
-    end
+-- =============================================================================
+-- SECONDARY RESOURCE SYSTEM (Class Power)
+-- =============================================================================
 
+local secondarySupportedClasses = {
+    DEMONHUNTER = true, DRUID = true, EVOKER = true, MAGE = true,
+    MONK = true, PALADIN = true, ROGUE = true, SHAMAN = true, WARLOCK = true
+}
+
+local function EnsureSecondaryResourceAnchor()
+    if ns.SecondaryResourceAnchor then return ns.SecondaryResourceAnchor end
     local anchor = CreateFrame("Frame", "muteCatUF_SecondaryResourceAnchor", UIParent)
     anchor:SetPoint("CENTER", UIParent, "CENTER", 0, -40)
     anchor:SetSize(cfg.secondaryBarWidth, cfg.secondaryBarHeight)
     anchor:SetFrameStrata("MEDIUM")
-    anchor:EnableMouse(false)
-
-    anchor.preview = anchor:CreateTexture(nil, "BACKGROUND")
-    anchor.preview:SetAllPoints(anchor)
-    anchor.preview:SetTexture(WHITE_TEXTURE)
-    anchor.preview:SetVertexColor(1, 1, 1, 0)
-    anchor:Show()
-
     ns.SecondaryResourceAnchor = anchor
     return anchor
 end
 
-local secondarySupportedClasses = {
-    DEMONHUNTER = true,
-    DRUID = true,
-    EVOKER = true,
-    MAGE = true,
-    MONK = true,
-    PALADIN = true,
-    ROGUE = true,
-    SHAMAN = true,
-    WARLOCK = true,
-}
-
-local function UnpackColor(color, fallbackR, fallbackG, fallbackB)
-    if type(color) == "table" then
-        if color.GetRGB then
-            return color:GetRGB()
-        end
-        if color.r and color.g and color.b then
-            return color.r, color.g, color.b
-        end
-        if color[1] and color[2] and color[3] then
-            return color[1], color[2], color[3]
-        end
-    end
-
-    return fallbackR, fallbackG, fallbackB
-end
-
 local function SetSecondaryClassPowerColor(element, r, g, b)
-    if element.__mcColorR ~= r or element.__mcColorG ~= g or element.__mcColorB ~= b then
-        element.__mcColorR, element.__mcColorG, element.__mcColorB = r, g, b
+    -- FINAL OVERRIDE: If we are in CLASS COLOR mode, do not let anything change it.
+    -- This fixes the Hammer of Light / Divine Toll flickering for Paladins.
+    if element.__mcClassColorActive and PLAYER_CLASS_COLOR then
+        local rc, gc, bc = PLAYER_CLASS_COLOR.r, PLAYER_CLASS_COLOR.g, PLAYER_CLASS_COLOR.b
+        -- Always force it, even if no change is detected, to override internal oUF/Blizzard resets
+        element.__mcColorR, element.__mcColorG, element.__mcColorB = rc, gc, bc
         for i = 1, #element do
-            element[i]:SetStatusBarColor(r, g, b, 1)
+            element[i]:SetStatusBarColor(rc, gc, bc, 1)
         end
-    end
-end
-
-local function GetCurrentSecondaryClassPowerColor(element)
-    local first = element and element[1]
-    if first and first.GetStatusBarColor then
-        return first:GetStatusBarColor()
+        return
     end
 
-    return nil, nil, nil
+    element.__mcColorR, element.__mcColorG, element.__mcColorB = r, g, b
+    for i = 1, #element do
+        element[i]:SetStatusBarColor(r, g, b, 1)
+    end
 end
 
 local function WantsSecondaryClassColor(element, cur, max)
-    if not PLAYER_CLASS_COLOR then
-        return false, false
+    if not PLAYER_CLASS_COLOR then return false, false end
+    
+    local canEvaluate = ns.CanAccessValue(max) and ns.CanAccessValue(cur)
+    
+    -- Midnight Memory: Store last known valid max to survive "Secret Number" bursts
+    if ns.CanAccessValue(max) and max > 0 then
+        element.__mcLastValidMax = max
     end
 
-    -- Paladin mode: always keep Holy Power base color.
-    if PLAYER_CLASS == "PALADIN" then
-        return false, true
+    if not canEvaluate then
+        -- Grace period: if we were full and now get secrets/invalid, stay full for a moment
+        return element.__mcClassColorActive, false
     end
 
-    local maxIsAccessible = not ns.CanAccessValue or ns.CanAccessValue(max)
-    local curIsAccessible = not ns.CanAccessValue or ns.CanAccessValue(cur)
-    local canEvaluateAtMax = maxIsAccessible and curIsAccessible and type(max) == "number" and type(cur) == "number"
-    local isAtMax = canEvaluateAtMax and max > 0 and cur >= max
-
-    local wantsClassColor = isAtMax
-    if not wantsClassColor and not canEvaluateAtMax and element.__mcClassColorActive then
-        wantsClassColor = true
+    local effectiveMax = element.__mcLastValidMax or max
+    local isAtMax = effectiveMax > 0 and cur >= effectiveMax
+    
+    -- Special Case: Paladins at 5+ HP are always "Full" for UI purposes,
+    -- even if Hero Talents mess with the internal max reporting during procs.
+    if PLAYER_CLASS == "PALADIN" and cur >= 5 then
+        isAtMax = true
     end
 
-    return wantsClassColor, canEvaluateAtMax
+    return isAtMax, true
 end
 
-local function CreateOverlayLayer(parent, levelOffset)
-    local layer = CreateFrame("Frame", nil, parent)
-    layer:SetAllPoints(parent)
-    layer:SetFrameStrata(parent:GetFrameStrata())
-    layer:SetFrameLevel((parent:GetFrameLevel() or 1) + (levelOffset or 1))
-    return layer
-end
 
-local function CreateFrameBorder(owner, parent, r, g, b, alphaTop, alphaBottom, alphaLeft, alphaRight)
-    owner.borderTop = parent:CreateTexture(nil, "OVERLAY")
-    owner.borderTop:SetTexture(WHITE_TEXTURE)
-    owner.borderTop:SetPoint("TOPLEFT", owner, "TOPLEFT", 0, 0)
-    owner.borderTop:SetPoint("TOPRIGHT", owner, "TOPRIGHT", 0, 0)
-    owner.borderTop:SetHeight(1)
-    owner.borderTop:SetVertexColor(r, g, b, alphaTop or 1)
-
-    owner.borderBottom = parent:CreateTexture(nil, "OVERLAY")
-    owner.borderBottom:SetTexture(WHITE_TEXTURE)
-    owner.borderBottom:SetPoint("BOTTOMLEFT", owner, "BOTTOMLEFT", 0, 0)
-    owner.borderBottom:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", 0, 0)
-    owner.borderBottom:SetHeight(1)
-    owner.borderBottom:SetVertexColor(r, g, b, alphaBottom or 1)
-
-    owner.borderLeft = parent:CreateTexture(nil, "OVERLAY")
-    owner.borderLeft:SetTexture(WHITE_TEXTURE)
-    owner.borderLeft:SetPoint("TOPLEFT", owner, "TOPLEFT", 0, 0)
-    owner.borderLeft:SetPoint("BOTTOMLEFT", owner, "BOTTOMLEFT", 0, 0)
-    owner.borderLeft:SetWidth(1)
-    owner.borderLeft:SetVertexColor(r, g, b, alphaLeft or 1)
-
-    owner.borderRight = parent:CreateTexture(nil, "OVERLAY")
-    owner.borderRight:SetTexture(WHITE_TEXTURE)
-    owner.borderRight:SetPoint("TOPRIGHT", owner, "TOPRIGHT", 0, 0)
-    owner.borderRight:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", 0, 0)
-    owner.borderRight:SetWidth(1)
-    owner.borderRight:SetVertexColor(r, g, b, alphaRight or 1)
-end
-
-local function SetSecondaryResourceBorderThickness(container)
-    if not container then
-        return
-    end
-
-    local thickness = math.max(1, tonumber(cfg.secondaryBorderThickness) or 2)
-    container.borderTop:SetHeight(thickness)
-    container.borderBottom:SetHeight(thickness)
-    container.borderLeft:SetWidth(thickness)
-    container.borderRight:SetWidth(thickness)
-end
 
 local function UpdateSecondaryResourceTicks(container, maxPower)
-    if not container then
-        return
-    end
-
+    if not container then return end
     local maxValue = math.max(0, math.floor(tonumber(maxPower) or 0))
     container.__mcMaxPower = maxValue
 
-    local tickThickness = math.max(2, tonumber(cfg.secondaryTickThickness) or 2)
-    local width = container:GetWidth() or 0
-    if width <= 0 then
-        return
-    end
+    local width = math.floor(container:GetWidth() + 0.5)
+    if width <= 0 then return end
+    container.__mcActualWidth = width
+
+    if not container.ticks then container.ticks = {} end
+    for i = 1, #container.ticks do container.ticks[i]:Hide() end
+    if maxValue <= 1 then return end
 
     local tickParent = container.tickLayer or container
-    if not container.ticks then
-        container.ticks = {}
-    end
-
-    for i = 1, #container.ticks do
-        container.ticks[i]:Hide()
-    end
-
-    if maxValue <= 1 then
-        return
-    end
-
-    local segmentWidth = width / maxValue
     for i = 1, (maxValue - 1) do
         local tick = container.ticks[i]
         if not tick then
-            tick = tickParent:CreateTexture(nil, "OVERLAY")
+            tick = tickParent:CreateTexture(nil, "OVERLAY", nil, 7)
             tick:SetTexture(WHITE_TEXTURE)
-            tick:SetVertexColor(secondaryLineColor, secondaryLineColor, secondaryLineColor, 1)
+            tick:SetVertexColor(BORDER_COLOR_VALUE, BORDER_COLOR_VALUE, BORDER_COLOR_VALUE, 0.7)
             container.ticks[i] = tick
         end
-
-        local x = math.floor((segmentWidth * i) + 0.5) - math.floor(tickThickness * 0.5)
-        tick:ClearAllPoints()
-        tick:SetPoint("TOPLEFT", container, "TOPLEFT", x, 0)
-        tick:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", x, 0)
-        tick:SetWidth(tickThickness)
+        local x = math.floor((i * width / maxValue) + 0.5)
+        tick:SetPoint("TOPLEFT", container, "TOPLEFT", x - 1, 0)
+        tick:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", x - 1, 0)
+        tick:SetWidth(1)
         tick:Show()
     end
 end
 
 local function LayoutSecondaryResourceBars(container, classPower, maxPower)
-    if not container or not classPower then
-        return
-    end
-
+    if not container or not classPower then return end
     local maxValue = math.max(1, math.floor(tonumber(maxPower) or 1))
-    local width = container:GetWidth() or 0
+    local width = container.__mcActualWidth or math.floor(container:GetWidth() + 0.5)
     local height = container:GetHeight() or 0
-    if width <= 0 or height <= 0 then
-        return
-    end
+    if width <= 0 or height <= 0 then return end
 
-    local segmentWidth = width / maxValue
     for i = 1, #classPower do
         local seg = classPower[i]
         seg:ClearAllPoints()
-
         if i <= maxValue then
-            local left = math.floor(((i - 1) * segmentWidth) + 0.5)
-            local right = math.floor((i * segmentWidth) + 0.5)
-            local segWidth = math.max(1, right - left)
+            local left = math.floor(((i - 1) * width / maxValue) + 0.5)
+            local right = math.floor((i * width / maxValue) + 0.5)
+            local inclusiveRight = (i < maxValue) and (right - 2) or (right - 1)
             seg:SetPoint("TOPLEFT", container, "TOPLEFT", left, 0)
-            seg:SetSize(segWidth, height)
+            seg:SetSize(math.max(1, inclusiveRight - left + 1), height)
         else
             seg:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
             seg:SetSize(1, height)
@@ -326,76 +275,64 @@ local function LayoutSecondaryResourceBars(container, classPower, maxPower)
     end
 end
 
+function ns.ApplySecondaryResourceBarSize(container, width, height)
+    if not container then return end
+    local w = math.max(80, tonumber(width) or cfg.secondaryBarWidth)
+    local h = math.max(6, tonumber(height) or cfg.secondaryBarHeight)
+    container:SetSize(w, h)
+    
+    if ns.SecondaryResourceAnchor then ns.SecondaryResourceAnchor:SetSize(w, h) end
+    UpdateSecondaryResourceTicks(container, container.__mcMaxPower or 5)
+    
+    if ns.__mcPlayerFrame and ns.__mcPlayerFrame.ClassPower then
+        LayoutSecondaryResourceBars(container, ns.__mcPlayerFrame.ClassPower, container.__mcMaxPower or 5)
+    end
+end
+
 local function IsSecondaryResourceSuppressed()
-    if cfg.secondaryHideInVehicle and ns.IsPlayerInVehicle and ns.IsPlayerInVehicle() then
+    -- 1. CUTSCENE / OVERRIDE BAR / VEHICLE
+    -- These always take precedence, even in instances, as they replace the player's core gameplay.
+    if ns.clientSceneActive or C_ActionBar.HasOverrideActionBar() or (ns.IsPlayerInVehicle and ns.IsPlayerInVehicle()) then
         return true
     end
 
-    if cfg.secondaryHideMountedOutsideInstance and IsMounted and IsMounted() then
-        local _, instanceType = IsInInstance()
-        if instanceType ~= "party" and instanceType ~= "raid" then
-            return true
-        end
+    -- 2. INSTANCE EXCEPTION
+    -- Always show in Dungeon/Raid if we are NOT in a vehicle/cutscene.
+    local _, instanceType = IsInInstance()
+    if instanceType == "party" or instanceType == "raid" then
+        return false
+    end
+
+    -- 3. MOUNTED / TRAVEL FORMS
+    local isMounted = IsMounted()
+    local shapeshiftFormID = GetShapeshiftFormID()
+    -- IDs 3, 27, 29 are standard Druid travel/flight modes
+    if isMounted or shapeshiftFormID == 3 or shapeshiftFormID == 29 or shapeshiftFormID == 27 then
+        return true
     end
 
     return false
 end
 
-function ns.ApplySecondaryResourceBarSize(container, width, height)
-    if not container then
-        return
-    end
-
-    local w = math.max(80, tonumber(width) or cfg.secondaryBarWidth)
-    local h = math.max(6, tonumber(height) or cfg.secondaryBarHeight)
-    container:SetSize(w, h)
-
-    if ns.SecondaryResourceAnchor then
-        ns.SecondaryResourceAnchor:SetSize(w, h)
-    end
-
-    SetSecondaryResourceBorderThickness(container)
-    UpdateSecondaryResourceTicks(container, container.__mcMaxPower or 5)
-
-    local playerFrame = ns.__mcPlayerFrame
-    if playerFrame and playerFrame.ClassPower then
-        LayoutSecondaryResourceBars(container, playerFrame.ClassPower, container.__mcMaxPower or 5)
-    end
-end
-
 function ns.UpdateSecondaryResourceBar()
     local container = ns.SecondaryResourceBar
     local playerFrame = ns.__mcPlayerFrame
-    if not container or not playerFrame or not playerFrame.ClassPower then
-        return
-    end
-
-    if container.__mcPreview then
+    if not container or not playerFrame or not playerFrame.ClassPower then return end
+    if container.__mcPreview then container:Show() return end
+    
+    if not playerFrame.ClassPower.__isEnabled or IsSecondaryResourceSuppressed() then
+        container:Hide()
+    else
         container:Show()
-        return
+        container:SetAlpha(1)
     end
-
-    if not playerFrame.ClassPower.__isEnabled then
-        container:Hide()
-        return
-    end
-
-    if IsSecondaryResourceSuppressed() then
-        container:Hide()
-        return
-    end
-
-    container:Show()
 end
 
 local function SecondaryClassPowerPostUpdate(element, cur, max, hasMaxChanged, powerType)
     local container = element.__container
-    if not container then
-        return
-    end
+    if not container then return end
 
-    local maxIsAccessible = not ns.CanAccessValue or ns.CanAccessValue(max)
-    local visibleMax = math.max(1, (maxIsAccessible and tonumber(max)) or 0)
+    local visibleMax = math.max(1, tonumber(max) or 0)
     container.__mcMaxPower = visibleMax
 
     if hasMaxChanged then
@@ -403,61 +340,37 @@ local function SecondaryClassPowerPostUpdate(element, cur, max, hasMaxChanged, p
         UpdateSecondaryResourceTicks(container, visibleMax)
     end
 
-    local fallback = holyPowerColor
-    local colorObj = element.__owner and element.__owner.colors and element.__owner.colors.power and powerType and element.__owner.colors.power[powerType]
-    local baseR, baseG, baseB = UnpackColor(colorObj, fallback.r, fallback.g, fallback.b)
-    local wantsClassColor = WantsSecondaryClassColor(element, cur, max)
-    if wantsClassColor then
-        element.__mcClassColorActive = true
+    local colorObj = element.__owner.colors.power[powerType]
+    local r, g, b = (colorObj and colorObj.r or HOLY_POWER_COLOR.r), (colorObj and colorObj.g or HOLY_POWER_COLOR.g), (colorObj and colorObj.b or HOLY_POWER_COLOR.b)
+    
+    -- Store power type for color-only updates
+    element.__powerType = powerType 
+    element.__cur, element.__max = cur, max -- store for pulse/sticky logic
+
+    -- Set flag BEFORE calling setter to ensure lock-in mechanism works
+    element.__mcClassColorActive = WantsSecondaryClassColor(element, cur, max)
+    
+    if element.__mcClassColorActive then
         SetSecondaryClassPowerColor(element, PLAYER_CLASS_COLOR.r, PLAYER_CLASS_COLOR.g, PLAYER_CLASS_COLOR.b)
     else
-        element.__mcClassColorActive = false
-        SetSecondaryClassPowerColor(element, baseR, baseG, baseB)
+        SetSecondaryClassPowerColor(element, r, g, b)
     end
-
     ns.UpdateSecondaryResourceBar()
 end
 
+--- Wrapper for oUF color-only updates
 local function SecondaryClassPowerPostUpdateColor(element)
-    local wantsClassColor, canEvaluateAtMax = WantsSecondaryClassColor(element, element.__cur, element.__max)
-    if wantsClassColor then
-        element.__mcClassColorActive = true
-        SetSecondaryClassPowerColor(element, PLAYER_CLASS_COLOR.r, PLAYER_CLASS_COLOR.g, PLAYER_CLASS_COLOR.b)
-        return
-    end
-
-    if canEvaluateAtMax then
-        element.__mcClassColorActive = false
-    end
-
-    local r, g, b = GetCurrentSecondaryClassPowerColor(element)
-    if r and g and b then
-        element.__mcColorR, element.__mcColorG, element.__mcColorB = r, g, b
-    end
-end
-
-local function SecondaryClassPowerPostVisibility()
-    ns.UpdateSecondaryResourceBar()
+    SecondaryClassPowerPostUpdate(element, element.__cur or 0, element.__max or 0, false, element.__powerType or "HOLY_POWER")
 end
 
 function ns.InitializeSecondaryResourceBar(owner)
-    if ns.SecondaryResourceBar then
-        if owner then
-            ns.__mcPlayerFrame = owner
-        end
-        ns.UpdateSecondaryResourceBar()
-        return ns.SecondaryResourceBar
-    end
-
-    if not secondarySupportedClasses[PLAYER_CLASS] then
-        return
-    end
+    if not secondarySupportedClasses[PLAYER_CLASS] then return end
+    if ns.SecondaryResourceBar then ns.__mcPlayerFrame = owner; return ns.SecondaryResourceBar end
 
     local anchor = EnsureSecondaryResourceAnchor()
     local container = CreateFrame("Frame", nil, UIParent)
     container:SetPoint("CENTER", anchor, "CENTER", 0, 0)
-    container:SetFrameStrata("MEDIUM")
-    container:SetFrameLevel((anchor:GetFrameLevel() or 1) + 5)
+    container:SetFrameLevel(anchor:GetFrameLevel() + 5)
     container:SetIgnoreParentAlpha(true)
 
     container.bg = container:CreateTexture(nil, "BACKGROUND")
@@ -465,226 +378,142 @@ function ns.InitializeSecondaryResourceBar(owner)
     container.bg:SetTexture(cfg.barTexture)
     container.bg:SetVertexColor(0, 0, 0, 0.55)
 
-    container.tickLayer = CreateOverlayLayer(container, 25)
-    container.borderLayer = CreateOverlayLayer(container, 30)
-    CreateFrameBorder(container, container.borderLayer, secondaryLineColor, secondaryLineColor, secondaryLineColor, 1, 1, 1, 1)
-
-    container:SetScript("OnSizeChanged", function(self)
-        SetSecondaryResourceBorderThickness(self)
-        UpdateSecondaryResourceTicks(self, self.__mcMaxPower or 5)
-        if owner and owner.ClassPower then
-            LayoutSecondaryResourceBars(self, owner.ClassPower, self.__mcMaxPower or 5)
-        end
-    end)
+    -- Shared layers for borders and ticks
+    local function CreateLayer(level)
+        local l = CreateFrame("Frame", nil, container)
+        l:SetAllPoints(); l:SetFrameLevel(container:GetFrameLevel() + level)
+        return l
+    end
+    container.tickLayer = CreateLayer(1)
+    container.borderLayer = CreateLayer(2)
+    CreateFrameBorder(container, container.borderLayer, BORDER_COLOR_VALUE, BORDER_COLOR_VALUE, BORDER_COLOR_VALUE)
 
     local classPower = {}
     for i = 1, 10 do
         local seg = CreateFrame("StatusBar", nil, container)
         seg:SetStatusBarTexture(cfg.barTexture)
         seg:SetMinMaxValues(0, 1)
-        seg:SetValue(0)
         seg.smoothing = SMOOTH_INTERPOLATION
         classPower[i] = seg
     end
     classPower.__container = container
-    classPower.PostUpdate = SecondaryClassPowerPostUpdate
+    classPower.PostUpdate  = SecondaryClassPowerPostUpdate
     classPower.PostUpdateColor = SecondaryClassPowerPostUpdateColor
-    classPower.PostVisibility = SecondaryClassPowerPostVisibility
-
-    if owner then
-        owner.ClassPower = classPower
-    end
+    owner.ClassPower = classPower
 
     ns.ApplySecondaryResourceBarSize(container, cfg.secondaryBarWidth, cfg.secondaryBarHeight)
     ns.SecondaryResourceBar = container
     ns.__mcPlayerFrame = owner
 
-    if not ns.__mcSecondaryResourceWatcher then
-        local watcher = CreateFrame("Frame")
-        watcher:RegisterEvent("PLAYER_ENTERING_WORLD")
-        watcher:RegisterEvent("PLAYER_MOUNT_DISPLAY_CHANGED")
-        watcher:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-        watcher:RegisterEvent("UNIT_ENTERED_VEHICLE")
-        watcher:RegisterEvent("UNIT_EXITED_VEHICLE")
-        watcher:RegisterEvent("VEHICLE_UPDATE")
-        watcher:RegisterEvent("UPDATE_VEHICLE_ACTIONBAR")
-        watcher:SetScript("OnEvent", function(_, _, unit)
-            if unit and unit ~= "player" then
-                return
-            end
-            local frame = ns.__mcPlayerFrame
-            if frame and frame.ClassPower and frame.ClassPower.ForceUpdate then
-                frame.ClassPower:ForceUpdate()
-            end
-            ns.UpdateSecondaryResourceBar()
-        end)
-        ns.__mcSecondaryResourceWatcher = watcher
-    end
+    local watcher = CreateFrame("Frame")
+    local events = {
+        "PLAYER_ENTERING_WORLD", 
+        "PLAYER_MOUNT_DISPLAY_CHANGED", 
+        "UNIT_ENTERED_VEHICLE", 
+        "UNIT_EXITED_VEHICLE", 
+        "UPDATE_SHAPESHIFT_FORM", 
+        "ZONE_CHANGED_NEW_AREA",
+        "PLAYER_REGEN_DISABLED",
+        "PLAYER_REGEN_ENABLED",
+        "UPDATE_OVERRIDE_ACTIONBAR",
+        "CLIENT_SCENE_OPENED",
+        "CLIENT_SCENE_CLOSED"
+    }
+    for _, e in ipairs(events) do watcher:RegisterEvent(e) end
+    watcher:SetScript("OnEvent", function(_, event) 
+        if event == "CLIENT_SCENE_OPENED" then
+            ns.clientSceneActive = true
+        elseif event == "CLIENT_SCENE_CLOSED" then
+            ns.clientSceneActive = false
+        end
+        ns.UpdateSecondaryResourceBar() 
+    end)
 
-    ns.UpdateSecondaryResourceBar()
     return container
 end
 
+-- =============================================================================
+-- UNIT FRAME STYLING
+-- =============================================================================
+
 function ns.HideBlizzardUnitFrames()
     DisableBossFramesViaEditMode()
-
-    if PlayerFrame then
-        PlayerFrame:SetParent(ns.hiddenParent)
-    end
-
-    if TargetFrame then
-        TargetFrame:SetParent(ns.hiddenParent)
-    end
-
-    if FocusFrame then
-        FocusFrame:SetParent(ns.hiddenParent)
-    end
-
+    if PlayerFrame then PlayerFrame:SetParent(ns.hiddenParent) end
+    if TargetFrame then TargetFrame:SetParent(ns.hiddenParent) end
+    if FocusFrame  then FocusFrame:SetParent(ns.hiddenParent) end
+    
     HideFrameForever(TargetFrameToT)
     HideFrameForever(FocusFrameToT)
-
-    if CastingBarFrame then
-        CastingBarFrame:SetParent(ns.hiddenParent)
-    end
     HideFrameForever(PlayerCastingBarFrame)
     HideFrameForever(PetCastingBarFrame)
+    HideFrameForever(BossTargetFrameContainer, "__mcBossHidden")
 
-    HideFrameForever(BossTargetFrameContainer, "__mcBossHiddenSetup")
-
-    for i = 1, 5 do
-        local bossFrame = _G["Boss" .. i .. "TargetFrame"]
-        HideFrameForever(bossFrame, "__mcBossHiddenSetup")
-    end
+    for i = 1, 5 do HideFrameForever(_G["Boss"..i.."TargetFrame"], "__mcBossHidden") end
 end
 
 local function SetPowerVisible(self, visible)
-    if not self or not self.Power or not self.Health then
-        return
-    end
-
-    if self.__mcPowerVisible == visible then
-        return
-    end
+    if not self.Power or self.__mcPowerVisible == visible then return end
     self.__mcPowerVisible = visible
-
     if visible then
         self.Power:Show()
-        if self.Power.bg then
-            self.Power.bg:Show()
-        end
         self.Health:SetHeight(cfg.healthHeightWithPower)
     else
         self.Power:Hide()
-        if self.Power.bg then
-            self.Power.bg:Hide()
-        end
         self.Health:SetHeight(cfg.healthHeightNoPower)
     end
 end
 
 local function UpdateNameDisplay(self, unit)
-    if not self or not self.Name then
-        return
-    end
-
-    if not self.Name:IsShown() then
-        self.Name:Show()
-    end
-
-    local name = UnitName(unit) or ""
-    self.Name:SetText(name)
-
+    if not self.Name then return end
+    self.Name:SetText(UnitName(unit) or "")
     local r, g, b = ns.GetNameColor(unit)
-    if self.__mcNameR ~= r or self.__mcNameG ~= g or self.__mcNameB ~= b then
-        self.__mcNameR, self.__mcNameG, self.__mcNameB = r, g, b
-        self.Name:SetTextColor(r, g, b, 1)
-    end
+    self.Name:SetTextColor(r, g, b)
 end
 
-local function HealthPostUpdate(health, unit, cur)
+local function HealthPostUpdate(health, unit)
     local self = health.__owner
-    if self and self.HealthValue then
-        UpdateNameDisplay(self, unit)
-
+    UpdateNameDisplay(self, unit)
+    if self.HealthValue then
         local colorFunc = (unit == "target" or unit == "focus") and ns.GetNameColor or ns.GetClassColor
-        local r, g, b = colorFunc(unit)
-        if self.__mcHealthR ~= r or self.__mcHealthG ~= g or self.__mcHealthB ~= b then
-            self.__mcHealthR, self.__mcHealthG, self.__mcHealthB = r, g, b
-            self.HealthValue:SetTextColor(r, g, b, 1)
-        end
+        self.HealthValue:SetTextColor(colorFunc(unit))
     end
 end
 
 local function PowerPostUpdate(power, unit, _, _, max)
     local self = power.__owner
-    if self then
-        local keepVisible = (unit == "player" and ns.IsPlayerInVehicle()) or ns.HasVisiblePower(max)
-        SetPowerVisible(self, keepVisible)
-    end
-
+    SetPowerVisible(self, (unit == "player" and ns.IsPlayerInVehicle()) or ns.HasVisiblePower(max))
     ns.SetPowerColor(power, unit)
 end
 
+--- The main oUF style function.
 function ns.Style(self, unit)
-    local frameWidth = cfg.frameWidth
-    if unit == "focus" then
-        frameWidth = math.floor(cfg.frameWidth * 0.5)
-    end
-
-    self:SetSize(frameWidth, cfg.frameHeight)
+    local width = (unit == "focus") and math.floor(cfg.frameWidth * 0.5) or cfg.frameWidth
+    self:SetSize(width, cfg.frameHeight)
     self:SetFrameStrata("LOW")
 
+    -- Main Background
     self.bg = self:CreateTexture(nil, "BACKGROUND")
-    self.bg:SetAllPoints(self)
-    self.bg:SetTexture(cfg.barTexture)
-    self.bg:SetVertexColor(0, 0, 0, 0.2)
+    self.bg:SetAllPoints(); self.bg:SetTexture(cfg.barTexture); self.bg:SetVertexColor(0, 0, 0, 0.2)
 
-    self.borderTop = self:CreateTexture(nil, "BORDER")
-    self.borderTop:SetTexture(WHITE_TEXTURE)
-    self.borderTop:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
-    self.borderTop:SetPoint("TOPRIGHT", self, "TOPRIGHT", 0, 0)
-    self.borderTop:SetHeight(1)
+    -- Black Frame Borders
+    CreateFrameBorder(self, self, 0, 0, 0)
 
-    self.borderBottom = self:CreateTexture(nil, "BORDER")
-    self.borderBottom:SetTexture(WHITE_TEXTURE)
-    self.borderBottom:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 0, 0)
-    self.borderBottom:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
-    self.borderBottom:SetHeight(1)
-
-    self.borderLeft = self:CreateTexture(nil, "BORDER")
-    self.borderLeft:SetTexture(WHITE_TEXTURE)
-    self.borderLeft:SetPoint("TOPLEFT", self, "TOPLEFT", 0, 0)
-    self.borderLeft:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 0, 0)
-    self.borderLeft:SetWidth(1)
-
-    self.borderRight = self:CreateTexture(nil, "BORDER")
-    self.borderRight:SetTexture(WHITE_TEXTURE)
-    self.borderRight:SetPoint("TOPRIGHT", self, "TOPRIGHT", 0, 0)
-    self.borderRight:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
-    self.borderRight:SetWidth(1)
-
-    self.borderTop:SetVertexColor(0, 0, 0, 1)
-    self.borderBottom:SetVertexColor(0, 0, 0, 1)
-    self.borderLeft:SetVertexColor(0, 0, 0, 1)
-    self.borderRight:SetVertexColor(0, 0, 0, 1)
-
+    -- Health Bar
     local health = CreateFrame("StatusBar", nil, self)
-    health:SetPoint("TOPLEFT", self, "TOPLEFT", cfg.innerPadding, -cfg.innerPadding)
-    health:SetPoint("TOPRIGHT", self, "TOPRIGHT", -cfg.innerPadding, -cfg.innerPadding)
+    health:SetPoint("TOPLEFT", self, cfg.innerPadding, -cfg.innerPadding)
+    health:SetPoint("TOPRIGHT", self, -cfg.innerPadding, -cfg.innerPadding)
     health:SetHeight(cfg.healthHeightWithPower)
     health:SetStatusBarTexture(cfg.barTexture)
-    health:SetStatusBarColor(cfg.healthForeground[1], cfg.healthForeground[2], cfg.healthForeground[3], cfg.healthForeground[4])
+    health:SetStatusBarColor(unpack(cfg.healthForeground))
     health.frequentUpdates = true
     health.smoothing = SMOOTH_INTERPOLATION
     health.PostUpdate = HealthPostUpdate
-
+    
     health.bg = health:CreateTexture(nil, "BACKGROUND")
-    health.bg:SetAllPoints(health)
-    health.bg:SetTexture(cfg.barTexture)
-    health.bg:SetVertexColor(cfg.healthBackground[1], cfg.healthBackground[2], cfg.healthBackground[3], cfg.healthBackground[4])
-
+    health.bg:SetAllPoints(); health.bg:SetTexture(cfg.barTexture); health.bg:SetVertexColor(unpack(cfg.healthBackground))
     self.Health = health
 
+    -- Power Bar
     local power = CreateFrame("StatusBar", nil, self)
     power:SetPoint("TOPLEFT", health, "BOTTOMLEFT", 0, 0)
     power:SetPoint("TOPRIGHT", health, "BOTTOMRIGHT", 0, 0)
@@ -692,110 +521,71 @@ function ns.Style(self, unit)
     power:SetStatusBarTexture(cfg.barTexture)
     power.frequentUpdates = true
     power.smoothing = SMOOTH_INTERPOLATION
-    power.colorPower = false
-    power.colorClass = false
-    power.colorReaction = false
     power.PostUpdate = PowerPostUpdate
-
+    
     power.bg = power:CreateTexture(nil, "BACKGROUND")
-    power.bg:SetAllPoints(power)
-    power.bg:SetTexture(cfg.barTexture)
-    power.bg:SetVertexColor(0.15, 0.15, 0.15, 1)
-
+    power.bg:SetAllPoints(); power.bg:SetTexture(cfg.barTexture); power.bg:SetVertexColor(0.15, 0.15, 0.15, 1)
     self.Power = power
 
+    -- Texts
     self.Name = health:CreateFontString(nil, "OVERLAY")
-    self.Name:SetFont("Fonts\\FRIZQT__.TTF", 10, "THINOUTLINE")
-    self.Name:SetPoint("LEFT", health, "LEFT", 4, 0)
-    self.Name:SetJustifyH("LEFT")
-    self.Name:SetTextColor(1, 1, 1, 1)
-    self.Name:SetText("")
-
-    self.Name:Show()
+    self.Name:SetFont(DEFAULT_FONT, 10, "THINOUTLINE")
+    self.Name:SetPoint("LEFT", health, 4, 0)
 
     self.HealthValue = health:CreateFontString(nil, "OVERLAY")
-    self.HealthValue:SetFont("Fonts\\FRIZQT__.TTF", 10, "THINOUTLINE")
-    self.HealthValue:SetPoint("RIGHT", health, "RIGHT", -3, 0)
-    self.HealthValue:SetJustifyH("RIGHT")
-    self.HealthValue:SetTextColor(0, 0, 0, 1)
-    self.HealthValue:SetText("0")
-    if self.Tag then
-        self:Tag(self.HealthValue, "[mutecat:curhpabbr]")
-    end
+    self.HealthValue:SetFont(DEFAULT_FONT, 10, "THINOUTLINE")
+    self.HealthValue:SetPoint("RIGHT", health, -3, 0)
+    if self.Tag then self:Tag(self.HealthValue, "[mutecat:curhpabbr]") end
 
+    -- Player Castbar & Resources
     if unit == "player" then
-        local castbarAnchor = EnsureCastbarAnchor()
+        local anchor = EnsureCastbarAnchor()
         local castbar = CreateFrame("StatusBar", nil, UIParent)
-        castbar.__mcAnchor = castbarAnchor
-        castbar:SetPoint("LEFT", castbarAnchor, "LEFT", cfg.castbarHeight, 0)
-        ns.ApplyCastbarSize(castbar, cfg.castbarWidth, cfg.castbarHeight)
+        castbar.__mcAnchor = anchor
+        castbar:SetPoint("LEFT", anchor, cfg.castbarHeight, 0)
+        ns.ApplyCastbarSize(castbar)
         castbar:SetStatusBarTexture(cfg.barTexture)
         ApplyCastbarClassColor(castbar)
-        castbar:SetFrameStrata("MEDIUM")
-        castbar:SetFrameLevel((castbarAnchor:GetFrameLevel() or 1) + 5)
+        castbar:SetFrameLevel(anchor:GetFrameLevel() + 5)
         castbar:SetIgnoreParentAlpha(true)
         castbar.timeToHold = 0.15
         castbar.smoothing = IMMEDIATE_INTERPOLATION
 
         castbar.bg = castbar:CreateTexture(nil, "BACKGROUND")
-        castbar.bg:SetAllPoints(castbar)
-        castbar.bg:SetTexture(cfg.barTexture)
-        castbar.bg:SetVertexColor(0, 0, 0, 0.55)
+        castbar.bg:SetAllPoints(); castbar.bg:SetTexture(cfg.barTexture); castbar.bg:SetVertexColor(0, 0, 0, 0.55)
+        CreateFrameBorder(castbar, castbar, BORDER_COLOR_VALUE, BORDER_COLOR_VALUE, BORDER_COLOR_VALUE)
 
-        CreateFrameBorder(castbar, castbar, secondaryLineColor, secondaryLineColor, secondaryLineColor, 1, 1, 0, 1)
+        -- Castbar Icon
+        local iconFrame = CreateFrame("Frame", nil, castbar)
+        iconFrame:SetSize(cfg.castbarHeight, cfg.castbarHeight)
+        iconFrame:SetPoint("RIGHT", castbar, "LEFT", 0, 0)
+        iconFrame.bg = iconFrame:CreateTexture(nil, "BACKGROUND")
+        iconFrame.bg:SetAllPoints(); iconFrame.bg:SetTexture(WHITE_TEXTURE); iconFrame.bg:SetVertexColor(0, 0, 0, 0.55)
+        CreateFrameBorder(iconFrame, iconFrame, BORDER_COLOR_VALUE, BORDER_COLOR_VALUE, BORDER_COLOR_VALUE)
 
-        castbar.IconFrame = CreateFrame("Frame", nil, castbar)
-        castbar.IconFrame:SetSize(cfg.castbarHeight, cfg.castbarHeight)
-        castbar.IconFrame:SetPoint("RIGHT", castbar, "LEFT", 0, 0)
-
-        castbar.IconFrame.bg = castbar.IconFrame:CreateTexture(nil, "BACKGROUND")
-        castbar.IconFrame.bg:SetAllPoints(castbar.IconFrame)
-        castbar.IconFrame.bg:SetTexture(WHITE_TEXTURE)
-        castbar.IconFrame.bg:SetVertexColor(0, 0, 0, 0.55)
-
-        CreateFrameBorder(castbar.IconFrame, castbar.IconFrame, secondaryLineColor, secondaryLineColor, secondaryLineColor, 1, 1, 1, 0)
-
-        castbar.Icon = castbar.IconFrame:CreateTexture(nil, "ARTWORK")
-        castbar.Icon:SetPoint("TOPLEFT", castbar.IconFrame, "TOPLEFT", 1, -1)
-        castbar.Icon:SetPoint("BOTTOMRIGHT", castbar.IconFrame, "BOTTOMRIGHT", -1, 1)
+        castbar.Icon = iconFrame:CreateTexture(nil, "ARTWORK")
+        castbar.Icon:SetPoint("TOPLEFT", 1, -1); castbar.Icon:SetPoint("BOTTOMRIGHT", -1, 1)
         castbar.Icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        castbar.Icon:SetDrawLayer("OVERLAY", 2)
+        castbar.IconFrame = iconFrame
 
         castbar.Text = castbar:CreateFontString(nil, "OVERLAY")
-        castbar.Text:SetFont("Fonts\\FRIZQT__.TTF", 10, "THINOUTLINE")
-        castbar.Text:SetPoint("LEFT", castbar, "LEFT", 4, 0)
-        castbar.Text:SetJustifyH("LEFT")
+        castbar.Text:SetFont(DEFAULT_FONT, 10, "THINOUTLINE"); castbar.Text:SetPoint("LEFT", 4, 0)
 
         castbar.Time = castbar:CreateFontString(nil, "OVERLAY")
-        castbar.Time:SetFont("Fonts\\FRIZQT__.TTF", 10, "THINOUTLINE")
-        castbar.Time:SetPoint("RIGHT", castbar, "RIGHT", -4, 0)
-        castbar.Time:SetJustifyH("RIGHT")
+        castbar.Time:SetFont(DEFAULT_FONT, 10, "THINOUTLINE"); castbar.Time:SetPoint("RIGHT", -4, 0)
 
-        castbar.SafeZone = castbar:CreateTexture(nil, "OVERLAY")
-        castbar.SafeZone:SetTexture(WHITE_TEXTURE)
-        castbar.SafeZone:SetVertexColor(0.9, 0.2, 0.2, 0.4)
         castbar.PostCastStart = CastbarPostStart
         castbar.PostChannelStart = CastbarPostStart
-
         self.Castbar = castbar
         self.SecondaryResourceBar = ns.InitializeSecondaryResourceBar(self)
 
-        self.IconOverlay = CreateFrame("Frame", nil, self)
-        self.IconOverlay:SetAllPoints(self)
-        self.IconOverlay:SetFrameLevel(self:GetFrameLevel() + 20)
-
-        self.CombatIndicator = self.IconOverlay:CreateTexture(nil, "OVERLAY")
-        self.CombatIndicator:SetSize(18, 18)
-        self.CombatIndicator:SetPoint("TOP", self, "TOP", 0, -8)
-        self.CombatIndicator:SetTexture(cfg.combatIcon)
-        self.CombatIndicator:SetTexCoord(0, 1, 0, 1)
-        self.CombatIndicator:SetDrawLayer("OVERLAY", 7)
-
-        self.RestingIndicator = self.IconOverlay:CreateTexture(nil, "OVERLAY")
-        self.RestingIndicator:SetSize(20, 20)
-        self.RestingIndicator:SetPoint("TOPLEFT", self, "TOPLEFT", -6, 7)
-        self.RestingIndicator:SetTexture(cfg.restingIcon)
-        self.RestingIndicator:SetTexCoord(0, 1, 0, 1)
-        self.RestingIndicator:SetDrawLayer("OVERLAY", 7)
+        -- Indicators
+        local iconOverlay = CreateFrame("Frame", nil, self)
+        iconOverlay:SetAllPoints(); iconOverlay:SetFrameLevel(self:GetFrameLevel() + 20)
+        self.CombatIndicator = iconOverlay:CreateTexture(nil, "OVERLAY")
+        self.CombatIndicator:SetSize(18, 18); self.CombatIndicator:SetPoint("TOP", 0, -8); self.CombatIndicator:SetTexture(cfg.combatIcon)
+        
+        self.RestingIndicator = iconOverlay:CreateTexture(nil, "OVERLAY")
+        self.RestingIndicator:SetSize(20, 20); self.RestingIndicator:SetPoint("TOPLEFT", -6, 7); self.RestingIndicator:SetTexture(cfg.restingIcon)
     end
 end

@@ -1,4 +1,4 @@
-## Interface: 120001
+## Interface: 120001, 120000
 ## Title: muteCat UF
 ## Notes: Always-on unit frames for player and target.
 ## Author: muteCat
