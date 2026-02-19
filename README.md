@@ -3,7 +3,7 @@
 `muteCat UF` is a lightweight oUF-based unit frame addon for WoW Retail.
 It provides custom `player`, `target`, and `focus` frames, a custom player castbar, and a class-resource bar with Edit Mode support.
 
-Version: `0.1.1`
+Version: `1.0.0`
 Interface: `120001`
 
 ## Features
@@ -12,6 +12,11 @@ Interface: `120001`
   - `player`
   - `target`
   - `focus` (half-width layout)
+- Absorb Shields (Midnight Ready):
+  - **Damage Absorb**: Overlays health bar from the right, anchored to current health edge. Crystal ice-blue styling (#B7F3FFCD).
+  - **Heal Absorb**: Displays healing debt/anti-heal on the left edge. Neon-pink styling (#FF9BFECC).
+  - **Over-absorb Indicator**: Dynamic glow effect when shields exceed maximum health.
+  - Optimized for WoW Midnight (12.0.1) frame layering.
 - Custom player castbar:
   - integrated cast icon
   - class-colored castbar
