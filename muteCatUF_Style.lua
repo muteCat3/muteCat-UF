@@ -364,7 +364,6 @@ function ns.ApplySecondaryResourceBarSize(container, width, height)
 end
 
 function ns.UpdateSecondaryResourceBar()
-    if true then return end -- Temporarily disabled
     local container = ns.SecondaryResourceBar
     local playerFrame = ns.__mcPlayerFrame
     if not container or not playerFrame or not playerFrame.ClassPower then
@@ -442,7 +441,6 @@ local function SecondaryClassPowerPostVisibility()
 end
 
 function ns.InitializeSecondaryResourceBar(owner)
-    if true then return end -- Temporarily disabled
     if ns.SecondaryResourceBar then
         if owner then
             ns.__mcPlayerFrame = owner
